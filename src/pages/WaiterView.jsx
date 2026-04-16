@@ -366,6 +366,9 @@ export default function WaiterView() {
       return;
     }
 
+    const confirmed = window.confirm("Are you sure you want to close this guest tab?");
+    if (!confirmed) return;
+
     const updatedTabs = tabs.filter((tab) => tab.id !== tabId);
     await updateTabs(updatedTabs);
     setSelectedTabId(null);
@@ -385,12 +388,12 @@ export default function WaiterView() {
     await updateTabs(updatedTabs);
   };
 
-  const clearService = async (tabId) => {
+  const toggleService = async (tabId) => {
     const updatedTabs = tabs.map((tab) =>
       tab.id === tabId
         ? {
             ...tab,
-            serviceRequested: false,
+            serviceRequested: !tab.serviceRequested,
           }
         : tab
     );
@@ -545,6 +548,9 @@ export default function WaiterView() {
   }, [tabs]);
 
   const mainTabButtonLabel = `Main Tab · Excl ${formatMoney(getTableTotalExclTip())} · Tip ${formatMoney(getTableTotalTip())} · Incl ${formatMoney(getTableTotalInclTip())}`;
+  const lightBlue = "#5aa9e6";
+  const frameBorder = "2px solid #b7c3d6";
+  const innerBorder = "2px solid #d1dae8";
 
   if (!selectedTableId) {
     return (
@@ -559,7 +565,7 @@ export default function WaiterView() {
         <div
           style={{
             background: "#ffffff",
-            border: "1px solid #e3e7ef",
+            border: "2px solid #b7c3d6",
             borderRadius: 16,
             padding: 20,
             marginBottom: 20,
@@ -586,7 +592,7 @@ export default function WaiterView() {
                 key={tableId}
                 style={{
                   background: "#ffffff",
-                  border: "1px solid #e3e7ef",
+                  border: "2px solid #b7c3d6",
                   borderRadius: 16,
                   padding: 20,
                 }}
@@ -613,7 +619,7 @@ export default function WaiterView() {
                       fontSize: 12,
                     }}
                   >
-                    {summary.tableStatus === "closed" ? "Table Closed" : "Table Open"}
+                    {summary.tableStatus === "closed" ? "Table Occupied" : "Table Available"}
                   </div>
                 </div>
 
@@ -639,7 +645,7 @@ export default function WaiterView() {
                     padding: 12,
                     borderRadius: 12,
                     background: "#f8f9fc",
-                    border: "1px solid #edf1f7",
+                    border: "2px solid #d1dae8",
                     marginBottom: 14,
                   }}
                 >
@@ -651,7 +657,7 @@ export default function WaiterView() {
                       width: 140,
                       height: 140,
                       borderRadius: 8,
-                      border: "1px solid #d9dfeb",
+                      border: "2px solid #c2ccdb",
                       background: "#fff",
                       display: "block",
                       margin: "0 auto",
@@ -666,7 +672,7 @@ export default function WaiterView() {
                     padding: "12px 14px",
                     borderRadius: 10,
                     border: "none",
-                    background: "#0f1c33",
+                    background: lightBlue,
                     color: "#fff",
                     cursor: "pointer",
                     fontWeight: "bold",
@@ -694,7 +700,7 @@ export default function WaiterView() {
       <div
         style={{
           background: "#ffffff",
-          border: "1px solid #e3e7ef",
+          border: "2px solid #b7c3d6",
           borderRadius: 16,
           padding: 20,
           marginBottom: 20,
@@ -730,45 +736,27 @@ export default function WaiterView() {
     display: "flex",
     flexDirection: "column",
     gap: 10,
-    minWidth: 260,
+    minWidth: 380,
   }}
 >
   <button
     onClick={() => setMainTabOpen(true)}
     style={{
-      padding: "12px 16px",
-      borderRadius: 10,
+      padding: "22px 24px",
+      borderRadius: 14,
       border: "none",
-      background: "#2f6fb3",
+      background: lightBlue,
       color: "#fff",
       cursor: "pointer",
       fontWeight: "bold",
+      fontSize: 20,
+      lineHeight: 1.5,
       width: "100%",
+      boxShadow: "0 10px 24px rgba(90, 169, 230, 0.25)",
     }}
     title={mainTabButtonLabel}
   >
     {mainTabButtonLabel}
-  </button>
-
-  <button
-    onClick={() => {
-      setSelectedTableId(null);
-      setSelectedTabId(null);
-      setMainTabOpen(false);
-      setAssignModalOpen(false);
-    }}
-    style={{
-      padding: "12px 16px",
-      borderRadius: 10,
-      border: "none",
-      background: "#2f6fb3",
-      color: "#fff",
-      cursor: "pointer",
-      fontWeight: "bold",
-      width: "100%",
-    }}
-  >
-    Back to Tables
   </button>
 </div>
         </div>
@@ -777,7 +765,7 @@ export default function WaiterView() {
      <div
   style={{
     background: "#ffffff",
-    border: "1px solid #e3e7ef",
+    border: "2px solid #b7c3d6",
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
@@ -806,7 +794,7 @@ export default function WaiterView() {
       style={{
         padding: "10px 12px",
         borderRadius: 10,
-        border: "1px solid #ccd3e0",
+        border: "2px solid #bcc8da",
         width: 260,
         textAlign: "center",
       }}
@@ -817,7 +805,7 @@ export default function WaiterView() {
         padding: "10px 16px",
         borderRadius: 10,
         border: "none",
-        background: "#2f6fb3",
+        background: lightBlue,
         color: "#fff",
         cursor: "pointer",
         fontWeight: "bold",
@@ -838,6 +826,25 @@ export default function WaiterView() {
     }}
   >
     <button
+      onClick={() => saveTableStatus("closed")}
+      style={{
+        padding: "14px 28px",
+        borderRadius: 12,
+        border:
+          table?.tableStatus === "closed"
+            ? "2px solid #1d7f49"
+            : "1px solid #ccd3e0",
+        background: table?.tableStatus === "closed" ? "#e8f7ee" : "#fff",
+        color: table?.tableStatus === "closed" ? "#c1121f" : "#0f1c33",
+        cursor: "pointer",
+        fontWeight: "bold",
+        minWidth: 170,
+      }}
+    >
+      Table Occupied
+    </button>
+
+    <button
       onClick={() => saveTableStatus("open")}
       style={{
         padding: "14px 28px",
@@ -850,29 +857,31 @@ export default function WaiterView() {
         color: table?.tableStatus === "open" ? "#1d7f49" : "#0f1c33",
         cursor: "pointer",
         fontWeight: "bold",
-        minWidth: 150,
+        minWidth: 170,
       }}
     >
-      Table Open
+      Table Available
     </button>
 
     <button
-      onClick={() => saveTableStatus("closed")}
+      onClick={() => {
+        setSelectedTableId(null);
+        setSelectedTabId(null);
+        setMainTabOpen(false);
+        setAssignModalOpen(false);
+      }}
       style={{
         padding: "14px 28px",
         borderRadius: 12,
-        border:
-          table?.tableStatus === "closed"
-            ? "2px solid #c1121f"
-            : "1px solid #ccd3e0",
-        background: table?.tableStatus === "closed" ? "#fde9ec" : "#fff",
-        color: table?.tableStatus === "closed" ? "#c1121f" : "#0f1c33",
+        border: "none",
+        background: lightBlue,
+        color: "#fff",
         cursor: "pointer",
         fontWeight: "bold",
-        minWidth: 150,
+        minWidth: 170,
       }}
     >
-      Table Closed
+      View Tables
     </button>
   </div>
 </div>
@@ -880,7 +889,7 @@ export default function WaiterView() {
       <div
         style={{
           background: "#ffffff",
-          border: "1px solid #e3e7ef",
+          border: "2px solid #b7c3d6",
           borderRadius: 16,
           padding: "14px 22px",
           marginBottom: 20,
@@ -931,7 +940,7 @@ export default function WaiterView() {
             style={{
               padding: "10px 12px",
               borderRadius: 10,
-              border: "1px solid #ccd3e0",
+              border: "2px solid #bcc8da",
               minWidth: 220,
             }}
           />
@@ -955,7 +964,7 @@ export default function WaiterView() {
       <div
         style={{
           background: "#ffffff",
-          border: "1px solid #e3e7ef",
+          border: "2px solid #b7c3d6",
           borderRadius: 16,
           padding: 20,
           marginBottom: 20,
@@ -996,16 +1005,32 @@ export default function WaiterView() {
             <div
               key={`${item.category}-${item.name}`}
               style={{
-                border: "1px solid #d9dfeb",
+                border: "2px solid #c2ccdb",
                 borderRadius: 14,
                 padding: 16,
                 background: "#fff",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                minHeight: 250,
               }}
             >
               <div style={{ fontWeight: "bold", fontSize: 20, marginBottom: 8 }}>
                 {item.name}
               </div>
-              <div style={{ color: "#6c7a92", fontSize: 14, minHeight: 38, marginBottom: 12 }}>
+              <div
+                style={{
+                  color: "#6c7a92",
+                  fontSize: 16,
+                  minHeight: 52,
+                  marginBottom: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  textAlign: "center",
+                  lineHeight: "1.4",
+                }}
+              >
                 {item.description}
               </div>
               <div style={{ color: "#d98a00", fontWeight: "bold", fontSize: 18, marginBottom: 14 }}>
@@ -1019,7 +1044,7 @@ export default function WaiterView() {
                   padding: "12px 14px",
                   borderRadius: 10,
                   border: "none",
-                  background: "#0f1c33",
+                  background: lightBlue,
                   color: "#fff",
                   cursor: "pointer",
                   fontWeight: "bold",
@@ -1059,53 +1084,56 @@ export default function WaiterView() {
           >
             <div
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 12,
-                alignItems: "center",
+                position: "relative",
                 marginBottom: 16,
+                textAlign: "center",
+                paddingTop: 8,
               }}
             >
-              <div>
-                <div style={{ fontSize: 28, fontWeight: "bold" }}>
-                  {buildDisplayName(selectedTab)}
-                </div>
-                <div style={{ color: "#6c7a92", marginTop: 6 }}>
-                  Status: {selectedTab.status}
-                </div>
-                {selectedTab.paidAt && (
-                  <div style={{ color: "#6c7a92", marginTop: 6 }}>
-                    Paid at: {formatDateTime(selectedTab.paidAt)}
-                  </div>
-                )}
-              </div>
-
               <button
                 onClick={() => setSelectedTabId(null)}
                 style={{
-                  padding: "10px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #d9dfeb",
+                  position: "absolute",
+                  right: 0,
+                  top: 0,
+                  padding: "14px 20px",
+                  borderRadius: 12,
+                  border: "2px solid #c2ccdb",
                   background: "#fff",
                   cursor: "pointer",
                   fontWeight: "bold",
+                  fontSize: 16,
                 }}
               >
-                Close
+                Exit Page Options
               </button>
+
+              <div style={{ fontSize: 28, fontWeight: "bold" }}>
+                {buildDisplayName(selectedTab)}
+              </div>
+              <div style={{ color: "#6c7a92", marginTop: 6 }}>
+                Status: {selectedTab.status}
+              </div>
+              {selectedTab.paidAt && (
+                <div style={{ color: "#6c7a92", marginTop: 6 }}>
+                  Paid at: {formatDateTime(selectedTab.paidAt)}
+                </div>
+              )}
             </div>
 
-            <div style={{ marginBottom: 6 }}>
-              <strong>Subtotal excl tip:</strong> {formatMoney(getTabSubtotal(selectedTab))}
-            </div>
-            <div style={{ marginBottom: 6 }}>
-              <strong>Tip:</strong> {formatMoney(getTabTip(selectedTab))}
-            </div>
-            <div style={{ fontWeight: "bold", marginBottom: 6 }}>
-              Total incl tip: {formatMoney(getTabTotalInclTip(selectedTab))}
-            </div>
-            <div style={{ fontWeight: "bold", marginBottom: 16 }}>
-              Amount owing: {formatMoney(getTabAmountOwing(selectedTab))}
+            <div style={{ textAlign: "center", marginBottom: 16 }}>
+              <div style={{ marginBottom: 6 }}>
+                <strong>Subtotal excl tip:</strong> {formatMoney(getTabSubtotal(selectedTab))}
+              </div>
+              <div style={{ marginBottom: 6 }}>
+                <strong>Tip:</strong> {formatMoney(getTabTip(selectedTab))}
+              </div>
+              <div style={{ fontWeight: "bold", marginBottom: 6 }}>
+                Total incl tip: {formatMoney(getTabTotalInclTip(selectedTab))}
+              </div>
+              <div style={{ fontWeight: "bold" }}>
+                Amount owing: {formatMoney(getTabAmountOwing(selectedTab))}
+              </div>
             </div>
 
             <div style={{ marginBottom: 16 }}>
@@ -1122,7 +1150,7 @@ export default function WaiterView() {
                         padding: "12px 14px",
                         borderRadius: 12,
                         background: "#f8f9fc",
-                        border: "1px solid #edf1f7",
+                        border: "2px solid #d1dae8",
                         display: "flex",
                         justifyContent: "space-between",
                         gap: 20,
@@ -1150,52 +1178,64 @@ export default function WaiterView() {
               )}
             </div>
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              {selectedTab.status !== "paid" && (
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {selectedTab.status !== "paid" && (
+                  <button
+                    onClick={() => markPaid(selectedTab.id)}
+                    style={{
+                      padding: "10px 16px",
+                      borderRadius: 10,
+                      border: "none",
+                      background: "#1d7f49",
+                      color: "#fff",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Mark Guest as Paid
+                  </button>
+                )}
+
                 <button
-                  onClick={() => markPaid(selectedTab.id)}
+                  onClick={() => toggleService(selectedTab.id)}
                   style={{
                     padding: "10px 16px",
                     borderRadius: 10,
                     border: "none",
-                    background: "#1d7f49",
+                    background: selectedTab.serviceRequested ? "#c1121f" : "#1d7f49",
                     color: "#fff",
                     cursor: "pointer",
                     fontWeight: "bold",
                   }}
                 >
-                  Mark Paid
+                  Call for Service
                 </button>
-              )}
-
-              <button
-                onClick={() => clearService(selectedTab.id)}
-                style={{
-                  padding: "10px 16px",
-                  borderRadius: 10,
-                  border: "none",
-                  background: selectedTab.serviceRequested ? "#c1121f" : "#0f1c33",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
-                Service
-              </button>
+              </div>
 
               <button
                 onClick={() => closeTab(selectedTab.id)}
                 style={{
-                  padding: "10px 16px",
-                  borderRadius: 10,
-                  border: "1px solid #e0a5a5",
+                  padding: "14px 22px",
+                  borderRadius: 12,
+                  border: "2px solid #e0a5a5",
                   background: "#fff",
                   color: "#b42318",
                   cursor: "pointer",
-                  fontWeight: "bold",
+                  fontWeight: 800,
+                  fontSize: 18,
+                  marginLeft: "auto",
                 }}
               >
-                Close Tab
+                Close Guest Tab
               </button>
             </div>
           </div>
@@ -1316,7 +1356,7 @@ export default function WaiterView() {
                 style={{
                   padding: "12px 18px",
                   borderRadius: 10,
-                  border: "1px solid #d9dfeb",
+                  border: "2px solid #c2ccdb",
                   background: "#fff",
                   cursor: "pointer",
                   fontWeight: "bold",
@@ -1392,15 +1432,16 @@ export default function WaiterView() {
               <button
                 onClick={() => setMainTabOpen(false)}
                 style={{
-                  padding: "10px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #d9dfeb",
+                  padding: "14px 20px",
+                  borderRadius: 12,
+                  border: "2px solid #c2ccdb",
                   background: "#fff",
                   cursor: "pointer",
                   fontWeight: "bold",
+                  fontSize: 16,
                 }}
               >
-                Close
+                Exit Page Options
               </button>
             </div>
 
@@ -1433,7 +1474,7 @@ export default function WaiterView() {
                       padding: "14px 16px",
                       borderRadius: 14,
                       background: "#f8f9fc",
-                      border: "1px solid #edf1f7",
+                      border: "2px solid #d1dae8",
                     }}
                   >
                     <div

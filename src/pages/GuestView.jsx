@@ -6,11 +6,17 @@ function formatMoney(value) {
   return `R${Number(value || 0).toFixed(2)}`;
 }
 
-function buildDisplayName(tab) {
-  if (Array.isArray(tab?.members) && tab.members.length > 0) {
-    return tab.members.join(" & ");
-  }
-  return tab?.name || "Unnamed Tab";
+function buildShortDisplayName(tab) {
+  const members = Array.isArray(tab?.members)
+    ? tab.members.filter(Boolean)
+    : tab?.name
+      ? [tab.name]
+      : [];
+
+  if (members.length === 0) return "Unnamed Tab";
+  if (members.length === 1) return members[0];
+  if (members.length === 2) return `${members[0]} & ${members[1]}`;
+  return `${members[0]}, ${members[1]} & ${members[2]}`;
 }
 
 function getSessionStorageKey(tableId) {
@@ -64,6 +70,87 @@ async function ensureTableDocument(tableId) {
     });
   }
 }
+
+const pageShellStyle = {
+  minHeight: "100vh",
+  background: "linear-gradient(180deg, #ecfff3 0%, #f7fbff 55%, #eef8f2 100%)",
+  fontFamily: "Arial, sans-serif",
+  padding: 16,
+};
+
+const sectionCardStyle = {
+  background: "#ffffff",
+  border: "2px solid #b7d8c0",
+  borderRadius: 20,
+  padding: 20,
+  boxShadow: "0 12px 30px rgba(54, 101, 74, 0.08)",
+};
+
+const mobileInputWrapStyle = {
+  display: "grid",
+  gap: 10,
+  width: "100%",
+  maxWidth: 420,
+  marginBottom: 16,
+  boxSizing: "border-box",
+};
+
+const inputStyle = {
+  padding: "13px 14px",
+  borderRadius: 12,
+  border: "1px solid #b7cad5",
+  width: "100%",
+  minWidth: 0,
+  boxSizing: "border-box",
+  fontSize: 16,
+};
+
+const greenOptionButtonStyle = {
+  padding: "22px 20px",
+  borderRadius: 18,
+  border: "2px solid #8bc79a",
+  background: "#dff7e5",
+  color: "#123524",
+  cursor: "pointer",
+  fontWeight: "bold",
+  fontSize: 18,
+  minWidth: 220,
+  minHeight: 88,
+  boxShadow: "0 8px 20px rgba(88, 140, 102, 0.12)",
+};
+
+const secondaryButtonStyle = {
+  padding: "12px 18px",
+  borderRadius: 12,
+  border: "1px solid #bfd0da",
+  background: "#ffffff",
+  cursor: "pointer",
+  fontWeight: "bold",
+};
+
+const primaryActionStyle = {
+  padding: "12px 18px",
+  borderRadius: 12,
+  border: "none",
+  background: "#69b3d9",
+  color: "#fff",
+  cursor: "pointer",
+  fontWeight: "bold",
+};
+
+const tabCardStyle = (serviceRequested) => ({
+  width: "100%",
+  maxWidth: 700,
+  margin: "0 auto",
+  display: "block",
+  padding: 24,
+  borderRadius: 18,
+  background: serviceRequested ? "#d8f0df" : "#e3f6e8",
+  border: serviceRequested ? "2px solid #58a36b" : "2px solid #9dceb0",
+  textAlign: "center",
+  cursor: "pointer",
+  boxShadow: "0 10px 24px rgba(88, 140, 102, 0.10)",
+});
 
 export default function GuestView() {
   const params = new URLSearchParams(window.location.search);
@@ -447,7 +534,7 @@ export default function GuestView() {
 
     if (matchedTabs.length > 1) {
       alert(
-        "More than one matching tab was found. Please use Join Existing Tab for now."
+        "More than one matching tab was found. Please use Join Someone's Tab for now."
       );
       return;
     }
@@ -546,27 +633,27 @@ export default function GuestView() {
   const showSetupOptions = !currentTab;
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#f6f7fb",
-        fontFamily: "Arial, sans-serif",
-        padding: 24,
-      }}
-    >
+    <div style={pageShellStyle}>
       <div
         style={{
-          maxWidth: 950,
+          maxWidth: 980,
           margin: "0 auto",
-          background: "#fff",
-          border: "1px solid #e3e7ef",
-          borderRadius: 18,
-          padding: 24,
+          ...sectionCardStyle,
+          padding: 18,
         }}
       >
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ margin: 0 }}>Welcome to Table {tableId}</h2>
-          <div style={{ color: "#6c7a92", marginTop: 8 }}>
+        <div
+          style={{
+            marginBottom: 24,
+            background: "linear-gradient(135deg, #dff7e5 0%, #eef9ff 100%)",
+            border: "2px solid #b7d8c0",
+            borderRadius: 18,
+            padding: 18,
+            textAlign: "center",
+          }}
+        >
+          <h2 style={{ margin: 0, fontSize: 30 }}>Welcome to Table {tableId}</h2>
+          <div style={{ color: "#4f6672", marginTop: 8, fontSize: 16 }}>
             Your waiter / waitress is <strong>{waiterName}</strong>
           </div>
         </div>
@@ -575,11 +662,10 @@ export default function GuestView() {
           <div style={{ marginBottom: 24 }}>
             <div
               style={{
-                display: "flex",
-                gap: 12,
-                flexWrap: "wrap",
-                justifyContent: "center",
-                marginBottom: 24,
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: 14,
+                marginBottom: 8,
               }}
             >
               <button
@@ -587,17 +673,9 @@ export default function GuestView() {
                   setTabType("single");
                   setStep("create");
                 }}
-                style={{
-                  padding: "14px 18px",
-                  borderRadius: 12,
-                  border: "none",
-                  background: "#0f1c33",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
+                style={greenOptionButtonStyle}
               >
-                Single Tab
+                My Own Tab
               </button>
 
               <button
@@ -605,68 +683,41 @@ export default function GuestView() {
                   setTabType("shared");
                   setStep("create");
                 }}
-                style={{
-                  padding: "14px 18px",
-                  borderRadius: 12,
-                  border: "none",
-                  background: "#f4a000",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
+                style={greenOptionButtonStyle}
               >
-                Shared Tab
+                Share a Tab
               </button>
 
               <button
                 onClick={() => setStep("joinExisting")}
-                style={{
-                  padding: "14px 18px",
-                  borderRadius: 12,
-                  border: "1px solid #ccd3e0",
-                  background: "#fff",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
+                style={greenOptionButtonStyle}
               >
-                Join Existing Tab
+                Join Someone`s Tab
               </button>
 
               <button
                 onClick={() => setStep("rejoin")}
-                style={{
-                  padding: "14px 18px",
-                  borderRadius: 12,
-                  border: "1px solid #ccd3e0",
-                  background: "#eaf3ff",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
+                style={greenOptionButtonStyle}
               >
-                Rejoin Session
+                Get Back to my Tab
               </button>
             </div>
           </div>
         )}
 
         {showSetupOptions && step === "create" && tabType === "single" && (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontWeight: "bold", marginBottom: 12 }}>
-              Create single tab
+          <div style={{ ...sectionCardStyle, marginBottom: 24, background: "#f7fff9" }}>
+            <div style={{ fontWeight: "bold", marginBottom: 12, fontSize: 20 }}>
+              Create my own tab
             </div>
 
-            <div style={{ display: "grid", gap: 10, maxWidth: 320, marginBottom: 16 }}>
+            <div style={mobileInputWrapStyle}>
               <input
                 type="text"
                 placeholder="Enter name"
                 value={singleName}
                 onChange={(e) => setSingleName(e.target.value)}
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #ccd3e0",
-                  width: "100%",
-                }}
+                style={inputStyle}
               />
 
               <input
@@ -674,42 +725,16 @@ export default function GuestView() {
                 placeholder="Enter surname"
                 value={singleSurname}
                 onChange={(e) => setSingleSurname(e.target.value)}
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #ccd3e0",
-                  width: "100%",
-                }}
+                style={inputStyle}
               />
             </div>
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button
-                onClick={createSingleTab}
-                style={{
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  border: "none",
-                  background: "#0f1c33",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
+              <button onClick={createSingleTab} style={primaryActionStyle}>
                 Create My Tab
               </button>
 
-              <button
-                onClick={() => setStep("choose")}
-                style={{
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  border: "1px solid #ccd3e0",
-                  background: "#fff",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
+              <button onClick={() => setStep("choose")} style={secondaryButtonStyle}>
                 Back
               </button>
             </div>
@@ -717,12 +742,12 @@ export default function GuestView() {
         )}
 
         {showSetupOptions && step === "create" && tabType === "shared" && (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontWeight: "bold", marginBottom: 12 }}>
-              Create shared tab
+          <div style={{ ...sectionCardStyle, marginBottom: 24, background: "#f7fff9" }}>
+            <div style={{ fontWeight: "bold", marginBottom: 12, fontSize: 20 }}>
+              Create a shared tab
             </div>
 
-            <div style={{ color: "#6c7a92", marginBottom: 12 }}>
+            <div style={{ color: "#5d7180", marginBottom: 12 }}>
               Add the names that should appear on this shared bill.
             </div>
 
@@ -730,8 +755,10 @@ export default function GuestView() {
               style={{
                 display: "grid",
                 gap: 12,
-                maxWidth: 420,
+                width: "100%",
+                maxWidth: 460,
                 marginBottom: 16,
+                boxSizing: "border-box",
               }}
             >
               {sharedNames.map((person, index) => (
@@ -741,9 +768,9 @@ export default function GuestView() {
                     display: "grid",
                     gap: 10,
                     padding: 12,
-                    borderRadius: 12,
-                    border: "1px solid #e3e7ef",
-                    background: "#f8f9fc",
+                    borderRadius: 14,
+                    border: "1px solid #c6ddd0",
+                    background: "#edf9f0",
                   }}
                 >
                   <input
@@ -753,11 +780,7 @@ export default function GuestView() {
                     onChange={(e) =>
                       updateSharedPerson(index, "name", e.target.value)
                     }
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 10,
-                      border: "1px solid #ccd3e0",
-                    }}
+                    style={inputStyle}
                   />
 
                   <input
@@ -767,59 +790,24 @@ export default function GuestView() {
                     onChange={(e) =>
                       updateSharedPerson(index, "surname", e.target.value)
                     }
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: 10,
-                      border: "1px solid #ccd3e0",
-                    }}
+                    style={inputStyle}
                   />
                 </div>
               ))}
             </div>
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
-              <button
-                onClick={addSharedNameInput}
-                style={{
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  border: "1px solid #ccd3e0",
-                  background: "#fff",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
+              <button onClick={addSharedNameInput} style={secondaryButtonStyle}>
                 Add Another Name
               </button>
             </div>
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button
-                onClick={createSharedTab}
-                style={{
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  border: "none",
-                  background: "#f4a000",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
+              <button onClick={createSharedTab} style={primaryActionStyle}>
                 Create Shared Tab
               </button>
 
-              <button
-                onClick={() => setStep("choose")}
-                style={{
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  border: "1px solid #ccd3e0",
-                  background: "#fff",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
+              <button onClick={() => setStep("choose")} style={secondaryButtonStyle}>
                 Back
               </button>
             </div>
@@ -827,23 +815,18 @@ export default function GuestView() {
         )}
 
         {showSetupOptions && step === "joinExisting" && (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontWeight: "bold", marginBottom: 12 }}>
-              Join existing tab
+          <div style={{ ...sectionCardStyle, marginBottom: 24, background: "#f7fff9" }}>
+            <div style={{ fontWeight: "bold", marginBottom: 12, fontSize: 20 }}>
+              Join someone`s tab
             </div>
 
-            <div style={{ display: "grid", gap: 10, maxWidth: 320, marginBottom: 16 }}>
+            <div style={mobileInputWrapStyle}>
               <input
                 type="text"
                 placeholder="Enter name"
                 value={joinRequestName}
                 onChange={(e) => setJoinRequestName(e.target.value)}
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #ccd3e0",
-                  width: "100%",
-                }}
+                style={inputStyle}
               />
 
               <input
@@ -851,12 +834,7 @@ export default function GuestView() {
                 placeholder="Enter surname"
                 value={joinRequestSurname}
                 onChange={(e) => setJoinRequestSurname(e.target.value)}
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #ccd3e0",
-                  width: "100%",
-                }}
+                style={inputStyle}
               />
             </div>
 
@@ -865,18 +843,18 @@ export default function GuestView() {
                 No tabs exist yet for this table.
               </div>
             ) : (
-              <div style={{ display: "grid", gap: 10, marginBottom: 16 }}>
+              <div style={{ display: "grid", gap: 12, marginBottom: 16 }}>
                 {tabs.map((tab) => (
                   <label
                     key={tab.id}
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 10,
-                      padding: "12px 14px",
-                      borderRadius: 12,
-                      border: "1px solid #d9dfeb",
-                      background: "#f8f9fc",
+                      gap: 12,
+                      padding: "16px 16px",
+                      borderRadius: 14,
+                      border: "2px solid #c6ddd0",
+                      background: "#edf9f0",
                       cursor: "pointer",
                     }}
                   >
@@ -886,14 +864,12 @@ export default function GuestView() {
                       checked={selectedExistingTabId === tab.id}
                       onChange={() => setSelectedExistingTabId(tab.id)}
                     />
-                    <div>
-                      <div style={{ fontWeight: "bold" }}>
-                        {buildDisplayName(tab)}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: "bold", fontSize: 17 }}>
+                        {buildShortDisplayName(tab)}
                       </div>
-                      <div style={{ color: "#6c7a92", marginTop: 4 }}>
-                        Excl: {formatMoney(getTabSubtotal(tab))} · Tip:{" "}
-                        {formatMoney(getTabTip(tab))} · Incl:{" "}
-                        {formatMoney(getTabTotalInclTip(tab))}
+                      <div style={{ color: "#5d7180", marginTop: 4 }}>
+                        Excl: {formatMoney(getTabSubtotal(tab))} · Tip: {formatMoney(getTabTip(tab))} · Incl: {formatMoney(getTabTotalInclTip(tab))}
                       </div>
                     </div>
                   </label>
@@ -902,32 +878,11 @@ export default function GuestView() {
             )}
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button
-                onClick={sendJoinRequest}
-                style={{
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  border: "none",
-                  background: "#0f1c33",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
+              <button onClick={sendJoinRequest} style={primaryActionStyle}>
                 Send Join Request
               </button>
 
-              <button
-                onClick={() => setStep("choose")}
-                style={{
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  border: "1px solid #ccd3e0",
-                  background: "#fff",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
+              <button onClick={() => setStep("choose")} style={secondaryButtonStyle}>
                 Back
               </button>
             </div>
@@ -935,23 +890,18 @@ export default function GuestView() {
         )}
 
         {showSetupOptions && step === "rejoin" && (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontWeight: "bold", marginBottom: 12 }}>
-              Rejoin session
+          <div style={{ ...sectionCardStyle, marginBottom: 24, background: "#f7fff9" }}>
+            <div style={{ fontWeight: "bold", marginBottom: 12, fontSize: 20 }}>
+              Get back to my tab
             </div>
 
-            <div style={{ display: "grid", gap: 10, maxWidth: 320, marginBottom: 16 }}>
+            <div style={mobileInputWrapStyle}>
               <input
                 type="text"
                 placeholder="Enter name"
                 value={rejoinName}
                 onChange={(e) => setRejoinName(e.target.value)}
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #ccd3e0",
-                  width: "100%",
-                }}
+                style={inputStyle}
               />
 
               <input
@@ -959,42 +909,16 @@ export default function GuestView() {
                 placeholder="Enter surname"
                 value={rejoinSurname}
                 onChange={(e) => setRejoinSurname(e.target.value)}
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #ccd3e0",
-                  width: "100%",
-                }}
+                style={inputStyle}
               />
             </div>
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button
-                onClick={rejoinSession}
-                style={{
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  border: "none",
-                  background: "#2f6fb3",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
+              <button onClick={rejoinSession} style={primaryActionStyle}>
                 Rejoin My Tab
               </button>
 
-              <button
-                onClick={() => setStep("choose")}
-                style={{
-                  padding: "12px 18px",
-                  borderRadius: 10,
-                  border: "1px solid #ccd3e0",
-                  background: "#fff",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
+              <button onClick={() => setStep("choose")} style={secondaryButtonStyle}>
                 Back
               </button>
             </div>
@@ -1009,38 +933,20 @@ export default function GuestView() {
                   fontWeight: "bold",
                   marginBottom: 10,
                   textAlign: "center",
+                  fontSize: 20,
                 }}
               >
                 My tab
               </div>
 
-              <button
-                onClick={() => openTabView(currentTab.id)}
-                style={{
-                  width: "100%",
-                  maxWidth: 620,
-                  margin: "0 auto",
-                  display: "block",
-                  padding: 20,
-                  borderRadius: 16,
-                  background: currentTab.serviceRequested ? "#dbeafe" : "#eaf3ff",
-                  border: currentTab.serviceRequested
-                    ? "2px solid #2f6fb3"
-                    : "1px solid #cfe0f5",
-                  textAlign: "center",
-                  cursor: "pointer",
-                }}
-              >
-                <div style={{ fontWeight: "bold", fontSize: 18 }}>
-                  {buildDisplayName(currentTab)}
+              <button onClick={() => openTabView(currentTab.id)} style={tabCardStyle(currentTab.serviceRequested)}>
+                <div style={{ fontWeight: "bold", fontSize: 20 }}>
+                  {buildShortDisplayName(currentTab)}
                 </div>
-                <div style={{ color: "#6c7a92", marginTop: 6 }}>
-                  Tab Owner:{" "}
-                  <strong>
-                    {currentTab.ownerName || currentTab.members?.[0] || "Unknown"}
-                  </strong>
+                <div style={{ color: "#4f6672", marginTop: 6 }}>
+                  Tab Owner: <strong>{currentTab.ownerName || currentTab.members?.[0] || "Unknown"}</strong>
                 </div>
-                <div style={{ color: "#6c7a92", marginTop: 6 }}>
+                <div style={{ color: "#4f6672", marginTop: 6 }}>
                   Status: {currentTab.status}
                 </div>
                 <div style={{ marginTop: 8 }}>
@@ -1052,6 +958,9 @@ export default function GuestView() {
                 <div style={{ marginTop: 4, fontWeight: "bold" }}>
                   Total incl: {formatMoney(getTabTotalInclTip(currentTab))}
                 </div>
+                <div style={{ marginTop: 12, color: "#3f7a54", fontWeight: "bold" }}>
+                  Select to View Tab
+                </div>
               </button>
             </div>
 
@@ -1061,46 +970,31 @@ export default function GuestView() {
                   fontWeight: "bold",
                   marginBottom: 10,
                   textAlign: "center",
+                  fontSize: 20,
                 }}
               >
                 Other tabs at this table
               </div>
 
               {availableMergeTabs.length === 0 ? (
-                <div style={{ color: "#6c7a92" }}>No other tabs at this table.</div>
+                <div style={{ color: "#6c7a92", textAlign: "center" }}>No other tabs at this table.</div>
               ) : (
                 <div style={{ display: "grid", gap: 12 }}>
                   {availableMergeTabs.map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => openTabView(tab.id)}
-                      style={{
-                        width: "100%",
-                        maxWidth: 620,
-                        margin: "0 auto",
-                        display: "block",
-                        padding: 20,
-                        borderRadius: 16,
-                        background: tab.serviceRequested ? "#dbeafe" : "#eaf3ff",
-                        border: tab.serviceRequested
-                          ? "2px solid #2f6fb3"
-                          : "1px solid #cfe0f5",
-                        textAlign: "center",
-                        cursor: "pointer",
-                      }}
+                      style={tabCardStyle(tab.serviceRequested)}
                     >
-                      <div style={{ fontWeight: "bold", fontSize: 16 }}>
-                        {buildDisplayName(tab)}
+                      <div style={{ fontWeight: "bold", fontSize: 18 }}>
+                        {buildShortDisplayName(tab)}
                       </div>
 
-                      <div style={{ color: "#6c7a92", marginTop: 6 }}>
-                        Tab Owner:{" "}
-                        <strong>
-                          {tab.ownerName || tab.members?.[0] || "Unknown"}
-                        </strong>
+                      <div style={{ color: "#4f6672", marginTop: 6 }}>
+                        Tab Owner: <strong>{tab.ownerName || tab.members?.[0] || "Unknown"}</strong>
                       </div>
 
-                      <div style={{ color: "#6c7a92", marginTop: 6 }}>
+                      <div style={{ color: "#4f6672", marginTop: 6 }}>
                         Status: {tab.status}
                       </div>
 
@@ -1115,14 +1009,18 @@ export default function GuestView() {
                       <div style={{ marginTop: 4, fontWeight: "bold" }}>
                         Total incl: {formatMoney(getTabTotalInclTip(tab))}
                       </div>
+
+                      <div style={{ marginTop: 12, color: "#3f7a54", fontWeight: "bold" }}>
+                        Select to View Tab
+                      </div>
                     </button>
                   ))}
                 </div>
               )}
             </div>
 
-            <div>
-              <div style={{ fontWeight: "bold", marginBottom: 10 }}>
+            <div style={{ ...sectionCardStyle, background: "#f7fff9" }}>
+              <div style={{ fontWeight: "bold", marginBottom: 10, fontSize: 18 }}>
                 Add guest to my tab
               </div>
 
@@ -1142,10 +1040,10 @@ export default function GuestView() {
                           display: "flex",
                           alignItems: "center",
                           gap: 10,
-                          padding: "12px 14px",
+                          padding: "14px 14px",
                           borderRadius: 12,
-                          border: "1px solid #d9dfeb",
-                          background: "#f8f9fc",
+                          border: "2px solid #c6ddd0",
+                          background: "#edf9f0",
                           cursor: "pointer",
                         }}
                       >
@@ -1158,31 +1056,18 @@ export default function GuestView() {
 
                         <div>
                           <div style={{ fontWeight: "bold" }}>
-                            {buildDisplayName(tab)}
+                            {buildShortDisplayName(tab)}
                           </div>
 
-                          <div style={{ color: "#6c7a92", marginTop: 4 }}>
-                            Excl {formatMoney(getTabSubtotal(tab))} · Tip{" "}
-                            {formatMoney(getTabTip(tab))} · Incl{" "}
-                            {formatMoney(getTabTotalInclTip(tab))}
+                          <div style={{ color: "#5d7180", marginTop: 4 }}>
+                            Excl {formatMoney(getTabSubtotal(tab))} · Tip {formatMoney(getTabTip(tab))} · Incl {formatMoney(getTabTotalInclTip(tab))}
                           </div>
                         </div>
                       </label>
                     ))}
                   </div>
 
-                  <button
-                    onClick={mergeTabIntoMyTab}
-                    style={{
-                      padding: "12px 18px",
-                      borderRadius: 10,
-                      border: "none",
-                      background: "#0f1c33",
-                      color: "#fff",
-                      cursor: "pointer",
-                      fontWeight: "bold",
-                    }}
-                  >
+                  <button onClick={mergeTabIntoMyTab} style={primaryActionStyle}>
                     Add Guest To My Tab
                   </button>
                 </>
@@ -1201,7 +1086,7 @@ export default function GuestView() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: 20,
+            padding: 16,
             zIndex: 1000,
           }}
         >
@@ -1214,34 +1099,28 @@ export default function GuestView() {
               overflowY: "auto",
               borderRadius: 18,
               padding: 24,
+              border: "2px solid #b7d8c0",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.15)",
             }}
           >
             <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
+                alignItems: "flex-start",
                 marginBottom: 14,
                 gap: 12,
               }}
             >
               <div>
                 <div style={{ fontWeight: "bold", fontSize: 24 }}>
-                  {buildDisplayName(selectedTabView)}
+                  {buildShortDisplayName(selectedTabView)}
                 </div>
 
                 <div style={{ color: "#6c7a92" }}>Waiter: {waiterName}</div>
               </div>
 
-              <button
-                onClick={closeTabView}
-                style={{
-                  padding: 8,
-                  borderRadius: 8,
-                  border: "1px solid #ccc",
-                  cursor: "pointer",
-                  background: "#fff",
-                }}
-              >
+              <button onClick={closeTabView} style={secondaryButtonStyle}>
                 Close
               </button>
             </div>
@@ -1255,9 +1134,9 @@ export default function GuestView() {
                     key={item.id}
                     style={{
                       padding: 12,
-                      borderRadius: 10,
-                      background: "#f8f9fc",
-                      border: "1px solid #eee",
+                      borderRadius: 12,
+                      background: "#f5fbf6",
+                      border: "1px solid #d5e6d9",
                     }}
                   >
                     <div style={{ fontWeight: "bold" }}>{item.name}</div>
@@ -1286,8 +1165,7 @@ export default function GuestView() {
               </div>
 
               <div>
-                Total incl:{" "}
-                <strong>{formatMoney(getTabTotalInclTip(selectedTabView))}</strong>
+                Total incl: <strong>{formatMoney(getTabTotalInclTip(selectedTabView))}</strong>
               </div>
             </div>
 
@@ -1304,10 +1182,10 @@ export default function GuestView() {
                         <div
                           key={request.id}
                           style={{
-                            border: "1px solid #d9dfeb",
+                            border: "1px solid #d5e6d9",
                             borderRadius: 12,
                             padding: 12,
-                            background: "#f8f9fc",
+                            background: "#f5fbf6",
                           }}
                         >
                           <div style={{ fontWeight: "bold", marginBottom: 10 }}>
@@ -1332,15 +1210,7 @@ export default function GuestView() {
 
                             <button
                               onClick={() => rejectJoinRequest(request.id)}
-                              style={{
-                                padding: "10px 14px",
-                                borderRadius: 10,
-                                border: "1px solid #d9dfeb",
-                                background: "#fff",
-                                color: "#0f1c33",
-                                fontWeight: "bold",
-                                cursor: "pointer",
-                              }}
+                              style={secondaryButtonStyle}
                             >
                               Decline
                             </button>
@@ -1360,8 +1230,11 @@ export default function GuestView() {
                       onChange={(e) => updateTipPercent(Number(e.target.value))}
                       style={{
                         padding: 10,
-                        borderRadius: 8,
-                        border: "1px solid #ccc",
+                        borderRadius: 10,
+                        border: "1px solid #b7cad5",
+                        width: "100%",
+                        maxWidth: 180,
+                        boxSizing: "border-box",
                       }}
                     >
                       <option value={0}>0%</option>
@@ -1381,14 +1254,15 @@ export default function GuestView() {
                   onClick={requestService}
                   style={{
                     marginTop: 16,
-                    padding: 12,
+                    padding: 14,
                     width: "100%",
-                    borderRadius: 10,
+                    borderRadius: 12,
                     border: "none",
-                    background: "#c1121f",
+                    background: "#69b3d9",
                     color: "#fff",
                     fontWeight: "bold",
                     cursor: "pointer",
+                    fontSize: 16,
                   }}
                 >
                   Request Service
