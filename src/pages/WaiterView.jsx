@@ -202,7 +202,7 @@ export default function WaiterView() {
 
   const [mainTabOpen, setMainTabOpen] = useState(false);
   const [flashServiceCards, setFlashServiceCards] = useState(false);
-  const [posAddedMap, setPosAddedMap] = useState({});
+  const [posAddedItemMap, setPosAddedItemMap] = useState({});
 
   useEffect(() => {
     TABLE_IDS.forEach((tableId) => {
@@ -468,10 +468,13 @@ export default function WaiterView() {
     }));
   };
 
-  const togglePosAdded = (rowKey) => {
-    setPosAddedMap((prev) => ({
+  const markNextPosItemAdded = (itemIds) => {
+    const nextItemId = (itemIds || []).find((itemId) => !posAddedItemMap[itemId]);
+    if (!nextItemId) return;
+
+    setPosAddedItemMap((prev) => ({
       ...prev,
-      [rowKey]: !prev[rowKey],
+      [nextItemId]: true,
     }));
   };
 
@@ -625,12 +628,12 @@ export default function WaiterView() {
 
       return {
         key: row.key,
-        posKey: `${row.key}__${itemIds.join("__")}`,
         name: row.name,
         qty: normalizedQty,
         unitPrice: row.unitPrice,
         totalPrice: Number((row.unitPrice * Number(normalizedQty)).toFixed(2)),
         details,
+        itemIds,
       };
     });
   }, [tabs]);
@@ -1663,32 +1666,34 @@ export default function WaiterView() {
                         ))}
                       </div>
 
-                      <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                        <label
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            width: 32,
-                            height: 32,
-                            borderRadius: 10,
-                            background: posAddedMap[row.posKey] ? "#dff7e5" : "#eef2f7",
-                            border: posAddedMap[row.posKey] ? "2px solid #1d7f49" : "2px solid #c2ccdb",
-                            cursor: "pointer",
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={Boolean(posAddedMap[row.posKey])}
-                            onChange={() => togglePosAdded(row.posKey)}
-                            style={{
-                              width: 18,
-                              height: 18,
-                              cursor: "pointer",
-                              accentColor: "#1d7f49",
-                            }}
-                          />
-                        </label>
+                      <div style={{ display: "flex", justifyContent: "center" }}>
+                        {(() => {
+                          const totalCount = row.itemIds.length;
+                          const addedCount = row.itemIds.filter((itemId) => posAddedItemMap[itemId]).length;
+                          const isComplete = addedCount >= totalCount && totalCount > 0;
+
+                          return (
+                            <button
+                              onClick={() => markNextPosItemAdded(row.itemIds)}
+                              disabled={isComplete}
+                              style={{
+                                minWidth: 148,
+                                padding: "10px 12px",
+                                borderRadius: 12,
+                                border: isComplete ? "2px solid #1d7f49" : "2px solid #c1121f",
+                                background: isComplete ? "#e8f7ee" : "#fde9ec",
+                                color: isComplete ? "#1d7f49" : "#c1121f",
+                                fontWeight: "bold",
+                                fontSize: 13,
+                                lineHeight: 1.3,
+                                textAlign: "center",
+                                cursor: isComplete ? "default" : "pointer",
+                              }}
+                            >
+                              {`${addedCount} of ${totalCount} added to POS`}
+                            </button>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
