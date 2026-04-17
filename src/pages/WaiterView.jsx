@@ -201,6 +201,7 @@ export default function WaiterView() {
   const [assignMode, setAssignMode] = useState("individual");
 
   const [mainTabOpen, setMainTabOpen] = useState(false);
+  const [flashServiceCards, setFlashServiceCards] = useState(false);
   const [posAddedMap, setPosAddedMap] = useState({});
 
   useEffect(() => {
@@ -232,6 +233,14 @@ export default function WaiterView() {
     return () => {
       unsubscribes.forEach((unsubscribe) => unsubscribe());
     };
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFlashServiceCards((prev) => !prev);
+    }, 650);
+
+    return () => clearInterval(interval);
   }, []);
 
   const table = selectedTableId
@@ -311,6 +320,7 @@ export default function WaiterView() {
       totalExcl,
       totalTip,
       totalIncl,
+      anyServiceRequested: guests.some((guest) => Boolean(guest.serviceRequested) && guest.status !== "paid"),
       joinLink: getJoinLink(tableId),
     };
   };
@@ -664,10 +674,18 @@ export default function WaiterView() {
               <div
                 key={tableId}
                 style={{
-                  background: "#ffffff",
-                  border: "2px solid #b7c3d6",
+                  background: summary.anyServiceRequested
+                    ? (flashServiceCards ? "#ffe0e0" : "#fff5f5")
+                    : "#ffffff",
+                  border: summary.anyServiceRequested
+                    ? (flashServiceCards ? "2px solid #d62828" : "2px solid #ef9a9a")
+                    : "2px solid #b7c3d6",
                   borderRadius: 16,
                   padding: 20,
+                  boxShadow: summary.anyServiceRequested
+                    ? (flashServiceCards ? "0 0 0 3px rgba(214, 40, 40, 0.12)" : "0 0 0 1px rgba(239, 154, 154, 0.10)")
+                    : "none",
+                  transition: "background 0.25s ease, border 0.25s ease, box-shadow 0.25s ease",
                 }}
               >
                 <div
@@ -699,19 +717,22 @@ export default function WaiterView() {
                 <div style={{ color: "#5c6b83", marginBottom: 6 }}>
                   Waiter / waitress: <strong>{summary.waiterName || "Not set yet"}</strong>
                 </div>
-                <div style={{ color: "#5c6b83", marginBottom: 12 }}>
+                <div style={{ color: "#5c6b83", marginBottom: summary.anyServiceRequested ? 8 : 14 }}>
                   {summary.activeTabs} active tabs
                 </div>
 
-                <div style={{ marginBottom: 6 }}>
-                  <strong>Total excl tip:</strong> {formatMoney(summary.totalExcl)}
-                </div>
-                <div style={{ marginBottom: 6 }}>
-                  <strong>Total tip:</strong> {formatMoney(summary.totalTip)}
-                </div>
-                <div style={{ marginBottom: 14 }}>
-                  <strong>Total incl tip:</strong> {formatMoney(summary.totalIncl)}
-                </div>
+                {summary.anyServiceRequested && (
+                  <div
+                    style={{
+                      marginBottom: 14,
+                      color: "#c1121f",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    }}
+                  >
+                    Service requested at this table
+                  </div>
+                )}
 
                 <div
                   style={{
