@@ -145,8 +145,8 @@ const tabCardStyle = (serviceRequested) => ({
   display: "block",
   padding: 24,
   borderRadius: 18,
-  background: serviceRequested ? "#d8f0df" : "#e3f6e8",
-  border: serviceRequested ? "2px solid #58a36b" : "2px solid #9dceb0",
+  background: serviceRequested ? "#fde9ec" : "#e3f6e8",
+  border: serviceRequested ? "2px solid #c1121f" : "2px solid #9dceb0",
   textAlign: "center",
   cursor: "pointer",
   boxShadow: "0 10px 24px rgba(88, 140, 102, 0.10)",
@@ -675,7 +675,7 @@ export default function GuestView() {
                 }}
                 style={greenOptionButtonStyle}
               >
-                My Own Tab
+                Create My Own Tab
               </button>
 
               <button
@@ -685,7 +685,7 @@ export default function GuestView() {
                 }}
                 style={greenOptionButtonStyle}
               >
-                Share a Tab
+                Create A Shared Tab
               </button>
 
               <button
@@ -1048,10 +1048,11 @@ export default function GuestView() {
                         }}
                       >
                         <input
-                          type="radio"
-                          name="mergeTab"
+                          type="checkbox"
                           checked={selectedMergeTabId === tab.id}
-                          onChange={() => setSelectedMergeTabId(tab.id)}
+                          onChange={() =>
+                            setSelectedMergeTabId((prev) => (prev === tab.id ? "" : tab.id))
+                          }
                         />
 
                         <div>
@@ -1258,14 +1259,14 @@ export default function GuestView() {
                     width: "100%",
                     borderRadius: 12,
                     border: "none",
-                    background: "#69b3d9",
+                    background: currentTab?.serviceRequested ? "#c1121f" : "#69b3d9",
                     color: "#fff",
                     fontWeight: "bold",
                     cursor: "pointer",
                     fontSize: 16,
                   }}
                 >
-                  Request Service
+                  {currentTab?.serviceRequested ? "Service Requested" : "Select to Call for Service"}
                 </button>
               </>
             )}

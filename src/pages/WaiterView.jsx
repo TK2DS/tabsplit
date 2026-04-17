@@ -198,8 +198,10 @@ export default function WaiterView() {
   const [selectedMenuItem, setSelectedMenuItem] = useState(null);
   const [assignSelections, setAssignSelections] = useState([]);
   const [modifierSelections, setModifierSelections] = useState({});
+  const [assignMode, setAssignMode] = useState("individual");
 
   const [mainTabOpen, setMainTabOpen] = useState(false);
+  const [posAddedMap, setPosAddedMap] = useState({});
 
   useEffect(() => {
     TABLE_IDS.forEach((tableId) => {
@@ -238,6 +240,23 @@ export default function WaiterView() {
 
   const tabs = table?.guests || [];
   const selectedTab = tabs.find((tab) => tab.id === selectedTabId) || null;
+
+  const assignablePeople = useMemo(() => {
+    return tabs.flatMap((tab, tabIndex) => {
+      const members = Array.isArray(tab.members) && tab.members.length > 0
+        ? tab.members
+        : [tab.ownerName || tab.name || `Guest ${tabIndex + 1}`];
+
+      return members.map((memberName, memberIndex) => ({
+        id: `${tab.id}__${memberIndex}`,
+        tabId: tab.id,
+        memberName,
+        memberIndex,
+        tabDisplayName: buildDisplayName(tab),
+        tabStatus: tab.status,
+      }));
+    });
+  }, [tabs]);
 
   const categories = useMemo(() => {
     const unique = [...new Set(menu.map((item) => item.category))];
@@ -405,6 +424,7 @@ export default function WaiterView() {
     setSelectedMenuItem(menuItem);
     setAssignSelections([]);
     setModifierSelections({});
+    setAssignMode("individual");
     setAssignModalOpen(true);
   };
 
@@ -413,17 +433,21 @@ export default function WaiterView() {
     setSelectedMenuItem(null);
     setAssignSelections([]);
     setModifierSelections({});
+    setAssignMode("individual");
   };
 
-  const toggleAssignSelection = (tabId) => {
-    const tab = tabs.find((t) => t.id === tabId);
+  const toggleAssignSelection = (personId) => {
+    const selectedPerson = assignablePeople.find((person) => person.id === personId);
+    if (!selectedPerson) return;
+
+    const tab = tabs.find((t) => t.id === selectedPerson.tabId);
     if (!tab || tab.status === "paid") return;
 
     setAssignSelections((prev) => {
-      if (prev.includes(tabId)) {
-        return prev.filter((id) => id !== tabId);
+      if (prev.includes(personId)) {
+        return prev.filter((id) => id !== personId);
       }
-      return [...prev, tabId];
+      return [...prev, personId];
     });
   };
 
@@ -431,6 +455,13 @@ export default function WaiterView() {
     setModifierSelections((prev) => ({
       ...prev,
       [modifierKey]: value,
+    }));
+  };
+
+  const togglePosAdded = (rowKey) => {
+    setPosAddedMap((prev) => ({
+      ...prev,
+      [rowKey]: !prev[rowKey],
     }));
   };
 
@@ -447,68 +478,95 @@ export default function WaiterView() {
       return;
     }
 
-    const hasPaidTabSelected = assignSelections.some((selectedId) => {
-      const selectedTabCheck = tabs.find((tab) => tab.id === selectedId);
+    const selectedPeople = assignSelections
+      .map((selectionId) => assignablePeople.find((person) => person.id === selectionId))
+      .filter(Boolean);
+
+    const hasPaidRecipient = selectedPeople.some((person) => {
+      const selectedTabCheck = tabs.find((tab) => tab.id === person.tabId);
       return selectedTabCheck?.status === "paid";
     });
 
-    if (hasPaidTabSelected) {
+    if (hasPaidRecipient) {
       alert("You cannot assign items to a tab that has already been marked as paid.");
       return;
     }
 
     let updatedTabs = [...tabs];
 
-    if (assignSelections.length === 1) {
-      const targetTabId = assignSelections[0];
-
+    const appendItemsToTab = (tabId, itemsToAdd) => {
       updatedTabs = updatedTabs.map((tab) => {
-        if (tab.id !== targetTabId) return tab;
+        if (tab.id !== tabId) return tab;
+        return {
+          ...tab,
+          items: [...(tab.items || []), ...itemsToAdd],
+          serviceRequested: false,
+        };
+      });
+    };
 
-        const newItem = {
+    if (assignMode === "split" && selectedPeople.length > 1) {
+      const splitGroupId = Date.now().toString();
+      const totalPeopleIncluded = selectedPeople.length;
+      let allocatedTotal = 0;
+
+      selectedPeople.forEach((person, index) => {
+        const isLast = index === selectedPeople.length - 1;
+        const exactShare = Number(selectedMenuItem.price) / totalPeopleIncluded;
+        const roundedShare = Number(exactShare.toFixed(2));
+        const finalShare = isLast
+          ? Number((Number(selectedMenuItem.price) - allocatedTotal).toFixed(2))
+          : roundedShare;
+
+        if (!isLast) {
+          allocatedTotal = Number((allocatedTotal + finalShare).toFixed(2));
+        }
+
+        const splitItem = {
+          id: `${splitGroupId}-${person.id}`,
+          name: `${selectedMenuItem.name} (Split)`,
+          category: selectedMenuItem.category,
+          description: selectedMenuItem.description,
+          price: Number(finalShare.toFixed(2)),
+          originalPrice: Number(selectedMenuItem.price),
+          isSplit: true,
+          splitCount: totalPeopleIncluded,
+          splitPeopleCount: totalPeopleIncluded,
+          participantShareCount: 1,
+          splitGroupId,
+          assignedPersonName: person.memberName,
+          modifiers: { ...modifierSelections },
+        };
+
+        appendItemsToTab(person.tabId, [splitItem]);
+      });
+    } else {
+      const itemsByTabId = {};
+
+      selectedPeople.forEach((person) => {
+        if (!itemsByTabId[person.tabId]) {
+          itemsByTabId[person.tabId] = [];
+        }
+
+        itemsByTabId[person.tabId].push({
           id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
           name: selectedMenuItem.name,
           category: selectedMenuItem.category,
           description: selectedMenuItem.description,
-          price: selectedMenuItem.price,
-          originalPrice: selectedMenuItem.price,
+          price: Number(selectedMenuItem.price),
+          originalPrice: Number(selectedMenuItem.price),
           isSplit: false,
           splitCount: 1,
+          splitPeopleCount: 1,
+          participantShareCount: 1,
           splitGroupId: null,
+          assignedPersonName: person.memberName,
           modifiers: { ...modifierSelections },
-        };
-
-        return {
-          ...tab,
-          items: [...(tab.items || []), newItem],
-          serviceRequested: false,
-        };
+        });
       });
-    } else {
-      const splitGroupId = Date.now().toString();
-      const splitPrice = Number((selectedMenuItem.price / assignSelections.length).toFixed(2));
 
-      updatedTabs = updatedTabs.map((tab) => {
-        if (!assignSelections.includes(tab.id)) return tab;
-
-        const splitItem = {
-          id: `${splitGroupId}-${tab.id}`,
-          name: `${selectedMenuItem.name} (Split)`,
-          category: selectedMenuItem.category,
-          description: selectedMenuItem.description,
-          price: splitPrice,
-          originalPrice: selectedMenuItem.price,
-          isSplit: true,
-          splitCount: assignSelections.length,
-          splitGroupId,
-          modifiers: { ...modifierSelections },
-        };
-
-        return {
-          ...tab,
-          items: [...(tab.items || []), splitItem],
-          serviceRequested: false,
-        };
+      Object.entries(itemsByTabId).forEach(([tabId, itemsToAdd]) => {
+        appendItemsToTab(tabId, itemsToAdd);
       });
     }
 
@@ -530,24 +588,39 @@ export default function WaiterView() {
             name: baseName,
             qty: 0,
             unitPrice: Number(item.originalPrice || item.price || 0),
-            totalPrice: 0,
-            details: [],
+            detailsSet: new Set(),
           };
         }
 
-        grouped[groupKey].qty += 1;
-        grouped[groupKey].totalPrice += Number(item.price || 0);
-        grouped[groupKey].details.push({
-          itemId: item.id,
-          display: formatItemModifiers(item) || "No special notes",
-        });
+        const qtyContribution = item.isSplit
+          ? Number(item.participantShareCount || 1) / Number(item.splitPeopleCount || item.splitCount || 1)
+          : 1;
+
+        grouped[groupKey].qty += qtyContribution;
+        grouped[groupKey].detailsSet.add(formatItemModifiers(item) || "No special notes");
       });
     });
 
-    return Object.values(grouped);
+    return Object.values(grouped).map((row) => {
+      const normalizedQty =
+        Math.abs(row.qty - Math.round(row.qty)) < 0.001
+          ? Math.round(row.qty)
+          : Number(row.qty.toFixed(2));
+
+      const details = Array.from(row.detailsSet);
+
+      return {
+        key: row.key,
+        name: row.name,
+        qty: normalizedQty,
+        unitPrice: row.unitPrice,
+        totalPrice: Number((row.unitPrice * Number(normalizedQty)).toFixed(2)),
+        details,
+      };
+    });
   }, [tabs]);
 
-  const mainTabButtonLabel = `Main Tab · Excl ${formatMoney(getTableTotalExclTip())} · Tip ${formatMoney(getTableTotalTip())} · Incl ${formatMoney(getTableTotalInclTip())}`;
+  const mainTabButtonLabel = `Select to view main tab · Excl ${formatMoney(getTableTotalExclTip())} · Tip ${formatMoney(getTableTotalTip())} · Incl ${formatMoney(getTableTotalInclTip())}`;
   const lightBlue = "#5aa9e6";
   const frameBorder = "2px solid #b7c3d6";
   const innerBorder = "2px solid #d1dae8";
@@ -1161,7 +1234,7 @@ export default function WaiterView() {
                         <div style={{ color: "#6c7a92", marginTop: 4 }}>{item.category}</div>
                         {item.isSplit && (
                           <div style={{ color: "#d98a00", marginTop: 4 }}>
-                            Split between {item.splitCount} tab(s)
+                            Split between {item.splitPeopleCount || item.splitCount} people
                           </div>
                         )}
                         {formatItemModifiers(item) && (
@@ -1217,7 +1290,7 @@ export default function WaiterView() {
                     fontWeight: "bold",
                   }}
                 >
-                  Call for Service
+                  End Service Request
                 </button>
               </div>
 
@@ -1259,7 +1332,7 @@ export default function WaiterView() {
             style={{
               background: "#fff",
               width: "100%",
-              maxWidth: 620,
+              maxWidth: 720,
               maxHeight: "90vh",
               overflowY: "auto",
               borderRadius: 18,
@@ -1267,26 +1340,26 @@ export default function WaiterView() {
               boxShadow: "0 20px 50px rgba(0,0,0,0.15)",
             }}
           >
-            <div style={{ fontSize: 28, fontWeight: "bold", marginBottom: 10 }}>
+            <div style={{ fontSize: 28, fontWeight: "bold", marginBottom: 10, textAlign: "center" }}>
               Assign: {selectedMenuItem.name}
             </div>
 
-            <div style={{ color: "#6c7a92", marginBottom: 18 }}>
-              Select one or more tabs. Cost ({formatMoney(selectedMenuItem.price)}) will be split equally.
+            <div style={{ color: "#6c7a92", marginBottom: 18, textAlign: "center" }}>
+              Select the individual people who should get this item.
             </div>
 
             {selectedMenuItem.modifiers && (
               <div style={{ marginBottom: 18 }}>
-                <div style={{ fontWeight: "bold", marginBottom: 12 }}>Meal Options</div>
+                <div style={{ fontWeight: "bold", marginBottom: 12, textAlign: "center" }}>Meal Options</div>
 
                 <div style={{ display: "grid", gap: 14 }}>
                   {Object.entries(selectedMenuItem.modifiers).map(([modifierKey, options]) => (
                     <div key={modifierKey}>
-                      <div style={{ fontWeight: "bold", marginBottom: 8 }}>
+                      <div style={{ fontWeight: "bold", marginBottom: 8, textAlign: "center" }}>
                         {formatModifierLabel(modifierKey)}
                       </div>
 
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
                         {options.map((option) => {
                           const isSelected = modifierSelections[modifierKey] === option;
 
@@ -1316,37 +1389,98 @@ export default function WaiterView() {
               </div>
             )}
 
-            <div style={{ fontWeight: "bold", marginBottom: 10 }}>Assign to Tabs</div>
+            <div style={{ fontWeight: "bold", marginBottom: 10, textAlign: "center" }}>Assign to People</div>
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
+            <div style={{ display: "grid", gap: 12, marginBottom: 18 }}>
               {tabs.map((tab) => {
-                const selected = assignSelections.includes(tab.id);
+                const members = Array.isArray(tab.members) && tab.members.length > 0
+                  ? tab.members
+                  : [tab.ownerName || tab.name || "Unnamed Tab"];
                 const isPaid = tab.status === "paid";
 
                 return (
-                  <button
+                  <div
                     key={tab.id}
-                    onClick={() => toggleAssignSelection(tab.id)}
-                    disabled={isPaid}
                     style={{
-                      padding: "12px 16px",
+                      padding: "14px 16px",
                       borderRadius: 12,
-                      border: selected ? "2px solid #f4a000" : "1px solid #d9dfeb",
-                      background: isPaid ? "#eeeeee" : selected ? "#fff8ea" : "#f3f6fb",
-                      cursor: isPaid ? "not-allowed" : "pointer",
-                      fontWeight: "bold",
-                      opacity: isPaid ? 0.6 : 1,
+                      border: "1px solid #d9dfeb",
+                      background: isPaid ? "#f2f2f2" : "#f8f9fc",
+                      opacity: isPaid ? 0.7 : 1,
                     }}
                   >
-                    {buildDisplayName(tab)} {isPaid ? "(Paid)" : ""}
-                  </button>
+                    <div style={{ fontWeight: "bold", marginBottom: 10, textAlign: "center" }}>
+                      {buildDisplayName(tab)} {isPaid ? "(Paid)" : ""}
+                    </div>
+
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+                      {members.map((memberName, memberIndex) => {
+                        const personId = `${tab.id}__${memberIndex}`;
+                        const selected = assignSelections.includes(personId);
+
+                        return (
+                          <button
+                            key={personId}
+                            onClick={() => toggleAssignSelection(personId)}
+                            disabled={isPaid}
+                            style={{
+                              padding: "12px 16px",
+                              borderRadius: 12,
+                              border: selected ? "2px solid #f4a000" : "1px solid #d9dfeb",
+                              background: isPaid ? "#eeeeee" : selected ? "#fff8ea" : "#f3f6fb",
+                              cursor: isPaid ? "not-allowed" : "pointer",
+                              fontWeight: "bold",
+                              opacity: isPaid ? 0.6 : 1,
+                            }}
+                          >
+                            {memberName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </div>
 
             {assignSelections.length > 1 && (
-              <div style={{ color: "#d98a00", fontWeight: "bold", marginBottom: 18 }}>
-                {formatMoney(selectedMenuItem.price / assignSelections.length)} per tab
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontWeight: "bold", marginBottom: 10, textAlign: "center" }}>How should this be assigned?</div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginBottom: 12 }}>
+                  <button
+                    onClick={() => setAssignMode("split")}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 12,
+                      border: assignMode === "split" ? "2px solid #f4a000" : "1px solid #d9dfeb",
+                      background: assignMode === "split" ? "#fff8ea" : "#f3f6fb",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Split 1 meal
+                  </button>
+
+                  <button
+                    onClick={() => setAssignMode("individual")}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 12,
+                      border: assignMode === "individual" ? "2px solid #f4a000" : "1px solid #d9dfeb",
+                      background: assignMode === "individual" ? "#fff8ea" : "#f3f6fb",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Give each selected person their own meal
+                  </button>
+                </div>
+
+                <div style={{ color: "#d98a00", fontWeight: "bold", textAlign: "center" }}>
+                  {assignMode === "split"
+                    ? `${formatMoney(selectedMenuItem.price / assignSelections.length)} per person`
+                    : `${formatMoney(selectedMenuItem.price)} each · ${formatMoney(selectedMenuItem.price * assignSelections.length)} total`}
+                </div>
               </div>
             )}
 
@@ -1378,7 +1512,9 @@ export default function WaiterView() {
                 }}
               >
                 {assignSelections.length > 1
-                  ? `Split across ${assignSelections.length}`
+                  ? assignMode === "split"
+                    ? `Split 1 meal across ${assignSelections.length} people`
+                    : `Add ${assignSelections.length} meals`
                   : "Add Order"}
               </button>
             </div>
@@ -1448,19 +1584,22 @@ export default function WaiterView() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "minmax(220px, 1fr) 90px 120px 140px",
+                gridTemplateColumns: "minmax(160px, 1.1fr) 70px 100px 120px minmax(220px, 1.5fr) 120px",
                 gap: 12,
                 padding: "0 0 10px 0",
                 borderBottom: "1px solid #e3e7ef",
                 marginBottom: 14,
                 fontWeight: "bold",
                 color: "#5c6b83",
+                textAlign: "left",
               }}
             >
               <div>Item</div>
               <div>Qty</div>
               <div>Cost</div>
               <div>Total Cost</div>
+              <div>Special Notes</div>
+              <div>Added to POS</div>
             </div>
 
             {mainTabRows.length === 0 ? (
@@ -1480,24 +1619,51 @@ export default function WaiterView() {
                     <div
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "minmax(220px, 1fr) 90px 120px 140px",
+                        gridTemplateColumns: "minmax(160px, 1.1fr) 70px 100px 120px minmax(220px, 1.5fr) 120px",
                         gap: 12,
-                        alignItems: "center",
-                        marginBottom: row.details.length > 0 ? 10 : 0,
+                        alignItems: "start",
                       }}
                     >
-                      <div style={{ fontWeight: "bold" }}>{row.name}</div>
-                      <div style={{ fontWeight: "bold" }}>{row.qty}</div>
-                      <div style={{ fontWeight: "bold" }}>{formatMoney(row.unitPrice)}</div>
-                      <div style={{ fontWeight: "bold" }}>{formatMoney(row.totalPrice)}</div>
-                    </div>
+                      <div style={{ fontWeight: "bold", textAlign: "left" }}>{row.name}</div>
+                      <div style={{ fontWeight: "bold", textAlign: "left" }}>{row.qty}</div>
+                      <div style={{ fontWeight: "bold", textAlign: "left" }}>{formatMoney(row.unitPrice)}</div>
+                      <div style={{ fontWeight: "bold", textAlign: "left" }}>{formatMoney(row.totalPrice)}</div>
 
-                    <div style={{ display: "grid", gap: 6 }}>
-                      {row.details.map((detail, index) => (
-                        <div key={`${detail.itemId}-${index}`} style={{ color: "#6c7a92" }}>
-                          {index + 1}. {detail.display}
-                        </div>
-                      ))}
+                      <div style={{ display: "grid", gap: 6, color: "#6c7a92", textAlign: "left" }}>
+                        {row.details.map((detail, index) => (
+                          <div key={`${row.key}-${index}`}>
+                            {row.details.length > 1 ? `${index + 1}. ${detail}` : detail}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                        <label
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 32,
+                            height: 32,
+                            borderRadius: 10,
+                            background: posAddedMap[row.key] ? "#dff7e5" : "#eef2f7",
+                            border: posAddedMap[row.key] ? "2px solid #1d7f49" : "2px solid #c2ccdb",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={Boolean(posAddedMap[row.key])}
+                            onChange={() => togglePosAdded(row.key)}
+                            style={{
+                              width: 18,
+                              height: 18,
+                              cursor: "pointer",
+                              accentColor: "#1d7f49",
+                            }}
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
                 ))}
