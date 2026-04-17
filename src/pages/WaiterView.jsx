@@ -599,6 +599,7 @@ export default function WaiterView() {
             qty: 0,
             unitPrice: Number(item.originalPrice || item.price || 0),
             detailsSet: new Set(),
+            itemIds: [],
           };
         }
 
@@ -607,6 +608,7 @@ export default function WaiterView() {
           : 1;
 
         grouped[groupKey].qty += qtyContribution;
+        grouped[groupKey].itemIds.push(item.id || `${groupKey}-${grouped[groupKey].itemIds.length}`);
         grouped[groupKey].detailsSet.add(formatItemModifiers(item) || "No special notes");
       });
     });
@@ -619,8 +621,11 @@ export default function WaiterView() {
 
       const details = Array.from(row.detailsSet);
 
+      const itemIds = [...row.itemIds].sort();
+
       return {
         key: row.key,
+        posKey: `${row.key}__${itemIds.join("__")}`,
         name: row.name,
         qty: normalizedQty,
         unitPrice: row.unitPrice,
@@ -1620,7 +1625,7 @@ export default function WaiterView() {
               <div>Cost</div>
               <div>Total Cost</div>
               <div>Special Notes</div>
-              <div>Added to POS</div>
+              <div style={{ textAlign: "center", whiteSpace: "nowrap" }}>Added to POS</div>
             </div>
 
             {mainTabRows.length === 0 ? (
@@ -1667,15 +1672,15 @@ export default function WaiterView() {
                             width: 32,
                             height: 32,
                             borderRadius: 10,
-                            background: posAddedMap[row.key] ? "#dff7e5" : "#eef2f7",
-                            border: posAddedMap[row.key] ? "2px solid #1d7f49" : "2px solid #c2ccdb",
+                            background: posAddedMap[row.posKey] ? "#dff7e5" : "#eef2f7",
+                            border: posAddedMap[row.posKey] ? "2px solid #1d7f49" : "2px solid #c2ccdb",
                             cursor: "pointer",
                           }}
                         >
                           <input
                             type="checkbox"
-                            checked={Boolean(posAddedMap[row.key])}
-                            onChange={() => togglePosAdded(row.key)}
+                            checked={Boolean(posAddedMap[row.posKey])}
+                            onChange={() => togglePosAdded(row.posKey)}
                             style={{
                               width: 18,
                               height: 18,
